@@ -6,25 +6,13 @@ class WhosOnlineModule extends Gdn_Module {
 
 	protected $_OnlineUsers;
 
-	public function __construct(&$Sender = '') {
+	public function __construct($Sender = '') {
 		parent::__construct($Sender);
 	}
 
-	public function GetData($Invisible = FALSE) {
+	public function GetData() {
 		$SQL = Gdn::SQL();
-		// $this->_OnlineUsers = $SQL
-		// insert or update entry into table
-		$Session = Gdn::Session();
-
-		$Invisible = ($Invisible ? 1 : 0);
-
-		if ($Session->UserID)
-			$SQL->Replace('Whosonline', array(
-				'UserID' => $Session->UserID,
-				'Timestamp' => Gdn_Format::ToDateTime(),
-				'Invisible' => $Invisible),
-				array('UserID' => $Session->UserID)
-			);     
+		$Session = Gdn::Session();   
 
 		$Frequency = C('WhosOnline.Frequency', 4);
 		$History = time() - $Frequency;
@@ -43,37 +31,21 @@ class WhosOnlineModule extends Gdn_Module {
 	}
 
 	public function AssetTarget() {
-		//return 'Foot';
 		return 'Panel';
 	}
 
 	public function ToString() {
 		$String = '';
-		$Session = Gdn::Session();
-		ob_start();
-		?>
-			<div id="WhosOnline" class="Box">
-				<h4><?php echo T("Who's Online"); ?> (<?php echo $this->_OnlineUsers->NumRows(); ?>)</h4>
-				<ul class="PanelInfo">
-				<?php
-				if ($this->_OnlineUsers->NumRows() > 0) { 
-					foreach($this->_OnlineUsers->Result() as $User) {
-				?>
-					<li>
-		 				<strong <?php echo ($User->Invisible == 1 ? 'class="Invisible"' : '')?>>
-		    				<?php echo UserAnchor($User); ?>
-		 				</strong>
-		 				<?php echo Gdn_Format::Date($User->Timestamp); ?>
-					</li>
-				<?php
-					}
+		if ($this->_OnlineUsers->NumRows() > 0) {
+			foreach($this->_OnlineUsers->Result() as $User) {
+				if($User->Invisible != 1) {
+					$String .= Wrap(Wrap(UserAnchor($User), 'strong').' '.Gdn_Format::Date($User->Timestamp), 'li');
 				}
-				?>
-			</ul>
-		</div>
-		<?php
-		$String = ob_get_contents();
-		@ob_end_clean();
+			}
+
+			$String = Wrap(T("Who's Online").' ('.$this->_OnlineUsers->NumRows().')', 'h4').Wrap($String, 'ul', array('class' => 'PanelInfo'));
+			$String = Wrap($String, 'div', array('id' => 'WhosOnline', 'class' => 'Box'));
+		}
 		return $String;
 	}
 }
