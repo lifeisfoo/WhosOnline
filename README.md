@@ -1,6 +1,6 @@
 WhosOnline
 ==========
-Vanillaforums plugin that lists the users currently browsing the forum.
+Vanillaforums plugin that lists the users currently browsing the forum. Now compatible with 2.0 and 2.1.
 
 
 Note
