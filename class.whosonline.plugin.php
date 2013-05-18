@@ -20,7 +20,7 @@ $PluginInfo['WhosOnline'] = array(
 
 class WhosOnlinePlugin extends Gdn_Plugin {
    
-   public function PluginController_WhosOnline_Create(&$Sender) {
+   public function PluginController_WhosOnline_Create($Sender) {
       $Sender->Permission('Plugins.WhosOnline.Manage');
       $Sender->AddSideMenu('plugin/whosonline');
       $Sender->Form = new Gdn_Form();
@@ -43,24 +43,36 @@ class WhosOnlinePlugin extends Gdn_Plugin {
       $Sender->Render($this->GetView('whosonline.php'));
    }
 
-   public function PluginController_ImOnline_Create(&$Sender) {
+   public function PluginController_ImOnline_Create($Sender) {
       
       $Session = Gdn::Session();
       $UserMetaData = $this->GetUserMeta($Session->UserID, '%'); 
       
       // render new block and replace whole thing opposed to just the data
-      include_once(PATH_PLUGINS.DS.'WhosOnline'.DS.'class.whosonlinemodule.php');
       $WhosOnlineModule = new WhosOnlineModule($Sender);
       $WhosOnlineModule->GetData(ArrayValue('Plugin.WhosOnline.Invisible', $UserMetaData));
       echo $WhosOnlineModule->ToString();
 
    }
    
-   public function Base_Render_Before(&$Sender) {
+   public function Base_Render_Before($Sender) {
       $ConfigItem = C('WhosOnline.Location.Show', 'every');
       $Controller = $Sender->ControllerName;
       $Application = $Sender->ApplicationFolder;
-      $Session = Gdn::Session();     
+      $Session = Gdn::Session();
+	  $SQL = Gdn::SQL();
+	  $UserMetaData = $this->GetUserMeta($Session->UserID, '%');
+	  $Invisible = ArrayValue('Plugin.WhosOnline.Invisible', $UserMetaData);
+	  $Invisible = ($Invisible ? 1 : 0); 
+		// insert or update entry into table on every load
+		if ($Session->UserID) {
+			$SQL->Replace('Whosonline', array(
+				'UserID' => $Session->UserID,
+				'Timestamp' => Gdn_Format::ToDateTime(),
+				'Invisible' => $Invisible),
+				array('UserID' => $Session->UserID)
+			);
+		}
 
 		// Check if its visible to users
 		if (C('WhosOnline.Hide', TRUE) && !$Session->IsValid()) {
@@ -89,10 +101,8 @@ class WhosOnlinePlugin extends Gdn_Plugin {
 		
       if (!InArrayI($Controller, $ShowOnController)) return; 
 
-	   $UserMetaData = $this->GetUserMeta($Session->UserID, '%');     
-	   include_once(PATH_PLUGINS.DS.'WhosOnline'.DS.'class.whosonlinemodule.php');
 	   $WhosOnlineModule = new WhosOnlineModule($Sender);
-	   $WhosOnlineModule->GetData(ArrayValue('Plugin.WhosOnline.Invisible', $UserMetaData));
+	   $WhosOnlineModule->GetData();
 	   $Sender->AddModule($WhosOnlineModule);
 
 	   $Sender->AddJsFile('/plugins/WhosOnline/whosonline.js');
@@ -104,13 +114,13 @@ class WhosOnlinePlugin extends Gdn_Plugin {
       
    }
 
-   public function Base_GetAppSettingsMenuItems_Handler(&$Sender) {
+   public function Base_GetAppSettingsMenuItems_Handler($Sender) {
       $Menu = $Sender->EventArguments['SideMenu'];
       $Menu->AddLink('Add-ons', 'Whos Online', 'plugin/whosonline', 'Garden.Themes.Manage');
    }
    
    // User Settings
-   public function ProfileController_AfterAddSideMenu_Handler(&$Sender) {
+   public function ProfileController_AfterAddSideMenu_Handler($Sender) {
       $SideMenu = $Sender->EventArguments['SideMenu'];
       $Session = Gdn::Session();
       $ViewingUserID = $Session->UserID;
@@ -120,7 +130,7 @@ class WhosOnlinePlugin extends Gdn_Plugin {
       }
    }
    
-   public function ProfileController_Whosonline_Create(&$Sender) {
+   public function ProfileController_Whosonline_Create($Sender) {
       
       $Session = Gdn::Session();
       $UserID = $Session->IsValid() ? $Session->UserID : 0;
@@ -154,9 +164,9 @@ class WhosOnlinePlugin extends Gdn_Plugin {
    public function Setup() { 
       $Structure = Gdn::Structure();
       $Structure->Table('Whosonline')
-			->Column('UserID', 'int(11)', FALSE, 'primary')
-       	->Column('Timestamp', 'datetime')
-			->Column('Invisible', 'int(1)', 0)
-         ->Set(FALSE, FALSE); 
+		->Column('UserID', 'int(11)', FALSE, 'primary')
+		->Column('Timestamp', 'datetime')
+		->Column('Invisible', 'int(1)', 0)
+		->Set(FALSE, FALSE); 
    }
 }
